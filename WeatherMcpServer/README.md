@@ -54,6 +54,10 @@ Once configured with your API key you can interact with the following tools:
 
 For example you can ask: `What's the weather in Paris?` and the assistant will call the `get_current_weather` tool from this server.
 
+### Running tests
+
+Unit and integration tests can be executed with `dotnet test`. Integration tests require a valid `OPENWEATHER_API_KEY` environment variable to be set so that real requests can be performed against OpenWeatherMap. The GitHub Actions workflow sets this variable from the repository secrets when running tests.
+
 ## Publishing to NuGet.org
 
 1. Run `dotnet pack -c Release` to create the NuGet package
