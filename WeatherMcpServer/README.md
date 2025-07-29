@@ -41,7 +41,7 @@ To test this MCP server from source code (locally) without using a built MCP ser
 This server uses the OpenWeatherMap API. Set the `OPENWEATHER_API_KEY` environment variable before running the server:
 
 ```bash
-export OPENWEATHER_API_KEY=<your key>
+export OPENWEATHER_API_KEY=<your-key>
 ```
 
 ## Testing the MCP Server
@@ -75,9 +75,9 @@ For both VS Code and Visual Studio, the configuration file uses the following se
       "type": "stdio",
       "command": "dnx",
       "args": [
-        "<your package ID here>",
+        "WeatherMcpServer",
         "--version",
-        "<your package version here>",
+        "0.1.0-beta",
         "--yes"
       ]
     }
