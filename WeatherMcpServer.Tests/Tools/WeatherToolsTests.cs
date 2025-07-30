@@ -51,5 +51,41 @@ public class WeatherToolsTests
 
         Assert.NotNull(handler.LastRequest);
         Assert.Contains("q=London", handler.LastRequest!.RequestUri!.Query);
+        Assert.Contains("data/2.5/weather", handler.LastRequest!.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task GetWeatherForecast_UsesExpectedEndpoint()
+    {
+        var handler = new FakeHandler();
+        var factory = new TestHttpClientFactory(handler);
+        Environment.SetEnvironmentVariable("OPENWEATHER_API_KEY", "key");
+        var tools = new WeatherTools(factory, NullLogger<WeatherTools>.Instance);
+
+        await tools.GetWeatherForecast("London");
+
+        Assert.NotNull(handler.LastRequest);
+        Assert.Contains("q=London", handler.LastRequest!.RequestUri!.Query);
+        Assert.Contains("data/2.5/forecast", handler.LastRequest!.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task GetWeatherAlerts_UsesExpectedEndpoint()
+    {
+        var handler = new FakeHandler();
+        handler.Response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("[{\"lat\": 51.5073219, \"lon\": -0.1276474}]")
+        };
+        var factory = new TestHttpClientFactory(handler);
+        Environment.SetEnvironmentVariable("OPENWEATHER_API_KEY", "key");
+        var tools = new WeatherTools(factory, NullLogger<WeatherTools>.Instance);
+
+        await tools.GetWeatherAlerts("London");
+
+        Assert.NotNull(handler.LastRequest);
+        Assert.Contains("lat=51.5073219", handler.LastRequest!.RequestUri!.Query);
+        Assert.Contains("lon=-0.1276474", handler.LastRequest!.RequestUri!.Query);
+        Assert.Contains("data/2.5/forecast/hourly", handler.LastRequest!.RequestUri!.ToString());
     }
 }

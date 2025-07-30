@@ -36,6 +36,21 @@ public class WeatherApiIntegrationTests
         Assert.False(string.IsNullOrWhiteSpace(result));
     }
 
+    [Fact]
+    public async Task GetWeatherAlerts_ReturnsData()
+    {
+        var apiKey = Environment.GetEnvironmentVariable("OPENWEATHER_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return; // skip if no API key
+        }
+
+        var factory = new DefaultHttpClientFactory();
+        var tools = new WeatherTools(factory, NullLogger<WeatherTools>.Instance);
+        var result = await tools.GetWeatherAlerts("London", "GB");
+        Assert.False(string.IsNullOrWhiteSpace(result));
+    }
+
     private class DefaultHttpClientFactory : IHttpClientFactory
     {
         private readonly HttpClient _client = new();
