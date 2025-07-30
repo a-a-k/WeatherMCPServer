@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using WeatherMcpServer.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -10,6 +11,7 @@ builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
 // Add the MCP services: the transport to use (stdio) and the tools to register.
 builder.Services
     .AddHttpClient()
+    .AddSingleton<IOpenWeatherMapService, OpenWeatherMapService>()
     .AddMcpServer()
     .WithStdioServerTransport()
     .WithTools<WeatherTools>();

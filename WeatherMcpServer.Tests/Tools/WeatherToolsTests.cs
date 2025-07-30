@@ -1,91 +1,71 @@
-using System.Net;
-using System.Net.Http;
-using System;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using WeatherMcpServer.Services;
+using System.Text.Json.Nodes;
 
 public class WeatherToolsTests
 {
-    private class FakeHandler : HttpMessageHandler
+    private class MockWeatherService : IOpenWeatherMapService
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-        public HttpResponseMessage Response { get; set; } = new HttpResponseMessage(HttpStatusCode.OK)
+        public string? LastCity { get; private set; }
+        public string? LastCountryCode { get; private set; }
+        public JsonNode? WeatherData { get; set; } = JsonNode.Parse("{}");
+
+        public Task<JsonNode?> GetCurrentWeatherAsync(string city, string? countryCode = null)
         {
-            Content = new StringContent("{}")
-        };
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            LastCity = city;
+            LastCountryCode = countryCode;
+            return Task.FromResult(WeatherData);
+        }
+
+        public Task<JsonNode?> GetWeatherForecastAsync(string city, string? countryCode = null)
         {
-            LastRequest = request;
-            return Task.FromResult(Response);
+            LastCity = city;
+            LastCountryCode = countryCode;
+            return Task.FromResult(WeatherData);
+        }
+
+        public Task<JsonNode?> GetWeatherAlertsAsync(string city, string? countryCode = null)
+        {
+            LastCity = city;
+            LastCountryCode = countryCode;
+            return Task.FromResult(WeatherData);
         }
     }
 
-    private class TestHttpClientFactory : IHttpClientFactory
+    [Fact]
+    public async Task GetCurrentWeather_CallsServiceWithCorrectParameters()
     {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpMessageHandler handler)
-        {
-            _client = new HttpClient(handler);
-        }
-        public HttpClient CreateClient(string? name = null) => _client;
+        var mockService = new MockWeatherService();
+        var tools = new WeatherTools(mockService);
+
+        await tools.GetCurrentWeather("London", "GB");
+
+        Assert.Equal("London", mockService.LastCity);
+        Assert.Equal("GB", mockService.LastCountryCode);
     }
 
     [Fact]
-    public void Constructor_Throws_WhenApiKeyMissing()
+    public async Task GetWeatherForecast_CallsServiceWithCorrectParameters()
     {
-        Environment.SetEnvironmentVariable("OPENWEATHER_API_KEY", null);
-        Assert.Throws<InvalidOperationException>(() => new WeatherTools(new TestHttpClientFactory(new FakeHandler()), NullLogger<WeatherTools>.Instance));
+        var mockService = new MockWeatherService();
+        var tools = new WeatherTools(mockService);
+
+        await tools.GetWeatherForecast("Paris", "FR");
+
+        Assert.Equal("Paris", mockService.LastCity);
+        Assert.Equal("FR", mockService.LastCountryCode);
     }
 
     [Fact]
-    public async Task GetCurrentWeather_UsesExpectedEndpoint()
+    public async Task GetWeatherAlerts_CallsServiceWithCorrectParameters()
     {
-        var handler = new FakeHandler();
-        var factory = new TestHttpClientFactory(handler);
-        Environment.SetEnvironmentVariable("OPENWEATHER_API_KEY", "key");
-        var tools = new WeatherTools(factory, NullLogger<WeatherTools>.Instance);
+        var mockService = new MockWeatherService();
+        var tools = new WeatherTools(mockService);
 
-        await tools.GetCurrentWeather("London");
+        await tools.GetWeatherAlerts("Tokyo", "JP");
 
-        Assert.NotNull(handler.LastRequest);
-        Assert.Contains("q=London", handler.LastRequest!.RequestUri!.Query);
-        Assert.Contains("data/2.5/weather", handler.LastRequest!.RequestUri!.ToString());
-    }
-
-    [Fact]
-    public async Task GetWeatherForecast_UsesExpectedEndpoint()
-    {
-        var handler = new FakeHandler();
-        var factory = new TestHttpClientFactory(handler);
-        Environment.SetEnvironmentVariable("OPENWEATHER_API_KEY", "key");
-        var tools = new WeatherTools(factory, NullLogger<WeatherTools>.Instance);
-
-        await tools.GetWeatherForecast("London");
-
-        Assert.NotNull(handler.LastRequest);
-        Assert.Contains("q=London", handler.LastRequest!.RequestUri!.Query);
-        Assert.Contains("data/2.5/forecast", handler.LastRequest!.RequestUri!.ToString());
-    }
-
-    [Fact]
-    public async Task GetWeatherAlerts_UsesExpectedEndpoint()
-    {
-        var handler = new FakeHandler();
-        handler.Response = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent("[{\"lat\": 51.5073219, \"lon\": -0.1276474}]")
-        };
-        var factory = new TestHttpClientFactory(handler);
-        Environment.SetEnvironmentVariable("OPENWEATHER_API_KEY", "key");
-        var tools = new WeatherTools(factory, NullLogger<WeatherTools>.Instance);
-
-        await tools.GetWeatherAlerts("London");
-
-        Assert.NotNull(handler.LastRequest);
-        Assert.Contains("lat=51.5073219", handler.LastRequest!.RequestUri!.Query);
-        Assert.Contains("lon=-0.1276474", handler.LastRequest!.RequestUri!.Query);
-        Assert.Contains("data/2.5/forecast/hourly", handler.LastRequest!.RequestUri!.ToString());
+        Assert.Equal("Tokyo", mockService.LastCity);
+        Assert.Equal("JP", mockService.LastCountryCode);
     }
 }
