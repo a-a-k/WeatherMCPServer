@@ -1,37 +1,16 @@
 using System.ComponentModel;
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json.Nodes;
-using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using WeatherMcpServer.Services;
 
 public class WeatherTools
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
-    private readonly ILogger<WeatherTools> _logger;
+    private readonly IOpenWeatherMapService _weatherService;
 
-    public WeatherTools(IHttpClientFactory httpClientFactory, ILogger<WeatherTools> logger)
+    public WeatherTools(IOpenWeatherMapService weatherService)
     {
-        _httpClient = httpClientFactory.CreateClient();
-        _apiKey = Environment.GetEnvironmentVariable("OPENWEATHER_API_KEY") ?? throw new InvalidOperationException("OPENWEATHER_API_KEY environment variable not set.");
-        _logger = logger;
-    }
-
-    private async Task<JsonNode?> GetFromOpenWeatherAsync(string url)
-    {
-        try
-        {
-            _logger.LogInformation("Fetching URL: {Url}", url);
-            var response = await _httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<JsonNode>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching weather data");
-            return null;
-        }
+        _weatherService = weatherService;
     }
 
     [McpServerTool]
@@ -40,9 +19,7 @@ public class WeatherTools
         [Description("The city name to get weather for")] string city,
         [Description("Optional: Country code (e.g., 'US', 'UK')")] string? countryCode = null)
     {
-        var location = string.IsNullOrWhiteSpace(countryCode) ? city : $"{city},{countryCode}";
-        var url = $"https://api.openweathermap.org/data/2.5/weather?q={Uri.EscapeDataString(location)}&appid={_apiKey}&units=metric";
-        var result = await GetFromOpenWeatherAsync(url);
+        var result = await _weatherService.GetCurrentWeatherAsync(city, countryCode);
         if (result is null)
         {
             return "Failed to fetch weather data.";
@@ -61,9 +38,7 @@ public class WeatherTools
         [Description("The city name to get weather for")] string city,
         [Description("Optional: Country code (e.g., 'US', 'UK')")] string? countryCode = null)
     {
-        var location = string.IsNullOrWhiteSpace(countryCode) ? city : $"{city},{countryCode}";
-        var url = $"https://api.openweathermap.org/data/2.5/forecast?q={Uri.EscapeDataString(location)}&appid={_apiKey}&units=metric&cnt=24"; // 3 days ~ 24*3=72 but API returns 3h increments
-        var result = await GetFromOpenWeatherAsync(url);
+        var result = await _weatherService.GetWeatherForecastAsync(city, countryCode);
 
         if (result is null)
         {
@@ -94,18 +69,7 @@ public class WeatherTools
         [Description("The city name to get alerts for")] string city,
         [Description("Optional: Country code (e.g., 'US', 'UK')")] string? countryCode = null)
     {
-        var location = string.IsNullOrWhiteSpace(countryCode) ? city : $"{city},{countryCode}";
-        var geocodeUrl = $"https://api.openweathermap.org/geo/1.0/direct?q={Uri.EscapeDataString(location)}&limit=1&appid={_apiKey}";
-        var geoResult = await GetFromOpenWeatherAsync(geocodeUrl);
-        if (geoResult is null || geoResult.AsArray().Count == 0)
-        {
-            return "Location not found.";
-        }
-        var lat = (double)geoResult[0]["lat"];
-        var lon = (double)geoResult[0]["lon"];
-
-        var url = $"https://api.openweathermap.org/data/2.5/forecast/hourly?lat={lat}&lon={lon}&appid={_apiKey}&units=metric&cnt=24";
-        var result = await GetFromOpenWeatherAsync(url);
+        var result = await _weatherService.GetWeatherAlertsAsync(city, countryCode);
         if (result is null)
         {
             return "Failed to fetch weather alerts.";
@@ -122,12 +86,16 @@ public class WeatherTools
 
         foreach (var alert in alerts)
         {
-            var pop = (double)(alert?["pop"] ?? 0);
-            if (pop > 0.5)
+            var popNode = alert?["pop"];
+            if (popNode is not null)
             {
-                var date = alert?["dt_txt"]?.ToString() ?? "N/A";
-                var weather = alert?["weather"]?[0]?["description"]?.ToString() ?? "N/A";
-                alertBuilder.AppendLine($"- {date}: High probability of precipitation ({pop * 100}%) - {weather}");
+                var pop = (double)popNode;
+                if (pop > 0.5)
+                {
+                    var date = alert?["dt_txt"]?.ToString() ?? "N/A";
+                    var weather = alert?["weather"]?[0]?["description"]?.ToString() ?? "N/A";
+                    alertBuilder.AppendLine($"- {date}: High probability of precipitation ({pop * 100}%) - {weather}");
+                }
             }
         }
 
