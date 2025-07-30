@@ -68,7 +68,7 @@ To use this server with an MCP-compatible client, you can configure your IDE to 
 ```json
 {
   "servers": {
-    "WeatherMcpServer": {
+    "Weather MCP Server": {
       "type": "stdio",
       "command": "dotnet",
       "args": [
@@ -80,9 +80,44 @@ To use this server with an MCP-compatible client, you can configure your IDE to 
   }
 }
 ```
+or
+
+```json
+{
+  "servers": {
+    "Weather MCP Server": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "<path-to-your-project>/WeatherMcpServer/bin/<Debug> or <Release>/<net*>/WeatherMcpServer.dll"
+      ]
+    }
+  }
+}
+```
+Optionally, you can provide `env` or/and `workingDirectory` parameters this way:
+
+```json
+{
+  "servers": {
+    "Weather MCP Server": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "<path-to-your-project>/WeatherMCPServer/WeatherMcpServer/bin/Debug/net8.0/WeatherMcpServer.dll"
+      ],
+      "env": {
+        "OPENWEATHER_API_KEY": "<your_key>"
+      },
+      "workingDirectory": "<path-to-your-project>/WeatherMCPServer/WeatherMcpServer/bin/Debug/net8.0"
+    }
+  }
+}
+```
 
 ## Here is the results of GitHub Copilot communicating with this MCP server
-![Screenshot placeholder](placeholder.png)
+
+![Screenshot](image_2025-07-30_12-58-21.png)
 
 ## Publishing to NuGet.org
 
